@@ -97,29 +97,36 @@ jobs:
         run: |
           set -e
           MARKER="<!-- gitlint-report -->"
-          if [ -s gitlint.out ]; then
-            {
-              echo "$MARKER"
-              echo "### ⚠️ gitlint found commit message issues"
-              echo
-              echo '```'
-              cat gitlint.out
-              echo '```'
-            } > comment_body.md
-          else
-            {
-              echo "$MARKER"
-              echo "### ✅ gitlint: all commit messages OK"
-            } > comment_body.md
-          fi
-
           REPO="${{ github.repository }}"
           PR="${{ github.event.pull_request.number }}"
           COMMENT_ID=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
             --jq "[.[] | select(.body | startswith(\"$MARKER\"))][0].id" || true)
 
+          if [ ! -s gitlint.out ]; then
+            # No violations: clear out any stale issue-comment from an earlier push
+            if [ -n "$COMMENT_ID" ] && [ "$COMMENT_ID" != "null" ]; then
+              gh api -X DELETE "repos/$REPO/issues/comments/$COMMENT_ID"
+            fi
+            exit 0
+          fi
+
+          # Pull the commit-message convention straight from SCRIPTS_RULES.md so the
+          # comment stays in sync with that doc instead of duplicating it here.
+          RULES=$(awk '/^Commit message rules/{flag=1} /^Local tooling/{flag=0} flag' SCRIPTS_RULES.md)
+
+          {
+            echo "$MARKER"
+            echo "### ⚠️ Commit message format issues"
+            echo
+            echo '```'
+            cat gitlint.out
+            echo '```'
+            echo
+            echo "$RULES"
+          } > comment_body.md
+
           if [ -n "$COMMENT_ID" ] && [ "$COMMENT_ID" != "null" ]; then
-            gh api -X PATCH "repos/$REPO/issues/comments/$COMMENT_ID" -f body=@comment_body.md
+            gh api -X PATCH "repos/$REPO/issues/comments/$COMMENT_ID" -F body=@comment_body.md
           else
-            gh api "repos/$REPO/issues/$PR/comments" -f body=@comment_body.md
+            gh api "repos/$REPO/issues/$PR/comments" -F body=@comment_body.md
           fi
