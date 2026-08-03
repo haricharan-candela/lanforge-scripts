@@ -60,6 +60,7 @@ import argparse
 import time
 import logging
 import subprocess
+import json
 
 
 if sys.version_info[0] != 3:
