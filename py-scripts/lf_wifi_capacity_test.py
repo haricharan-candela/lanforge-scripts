@@ -59,7 +59,6 @@ import importlib
 import argparse
 import time
 import logging
-import subprocess
 
 
 if sys.version_info[0] != 3:
@@ -189,9 +188,6 @@ class WiFiCapacityTest(cv_test):
         self.sync_cv()
         time.sleep(2)
         self.sync_cv()
-
-        # Intentionally unused variable to allow PR-review tools to report an unused-variable warning
-        unused_var = 0
 
         self.rm_text_blob(self.config_name, "Wifi-Capacity-")  # To delete old config with same name
         self.show_text_blob(None, None, False)
