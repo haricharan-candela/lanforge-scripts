@@ -7,6 +7,10 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
     env:
       REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -75,7 +79,7 @@ jobs:
           bandit -r $FILES -f json -o bandit.json || true
           reviewdog -f=bandit -name="bandit" -reporter=github-pr-review -level=warning < bandit.json
 
-      - name: Run gitlint and show results
+      - name: Run gitlint
         run: |
           set -e
           python -m pip install gitlint
@@ -85,8 +89,47 @@ jobs:
           echo "Running gitlint on commits: $BASE..HEAD"
           # Run gitlint and capture output; do not fail the job on parsing issues
           gitlint --config .gitlint --commits $BASE..HEAD > gitlint.out || true
-          if [ -s gitlint.out ]; then
-            echo "gitlint found issues:"; cat gitlint.out
+          cat gitlint.out
+
+      - name: Comment gitlint results on PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          MARKER="<!-- gitlint-report -->"
+          REPO="${{ github.repository }}"
+          PR="${{ github.event.pull_request.number }}"
+          COMMENT_ID=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+            --jq "[.[] | select(.body | startswith(\"$MARKER\"))][0].id" || true)
+
+          if [ ! -s gitlint.out ]; then
+            # No violations: clear out any stale issue-comment from an earlier push
+            if [ -n "$COMMENT_ID" ] && [ "$COMMENT_ID" != "null" ]; then
+              gh api -X DELETE "repos/$REPO/issues/comments/$COMMENT_ID"
+            fi
+            exit 0
+          fi
+
+          RULES_URL="${{ github.server_url }}/$REPO/blob/${{ github.event.pull_request.base.ref }}/SCRIPTS_RULES.md"
+
+          {
+            echo "$MARKER"
+            echo "### ⚠️ Commit message needs a small fix"
+            echo
+            echo '```'
+            cat gitlint.out
+            echo '```'
+            echo
+            echo "**Expected format:** \`<component>: <short description>\` (max 72 chars)"
+            echo "Example: \`ci: Fix workflow permissions\`"
+            echo
+            echo "**To fix:** \`git commit --amend\`, then \`git push --force-with-lease\`."
+            echo
+            echo "Full rules: [SCRIPTS_RULES.md]($RULES_URL)"
+          } > comment_body.md
+
+          if [ -n "$COMMENT_ID" ] && [ "$COMMENT_ID" != "null" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$COMMENT_ID" -F body=@comment_body.md
           else
-            echo "gitlint: OK"
+            gh api "repos/$REPO/issues/$PR/comments" -F body=@comment_body.md
           fi
