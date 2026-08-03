@@ -83,5 +83,5 @@ jobs:
           git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1 || true
           BASE=${{ github.event.pull_request.base.sha }}
           echo "Running gitlint on commits: $BASE..HEAD"
-          gitlint --commits $BASE..HEAD --format gitlint > gitlint.out || true
+          gitlint --config .gitlint --commits $BASE..HEAD --format gitlint > gitlint.out || true
           reviewdog -f=gitlint -name="gitlint" -reporter=github-pr-review -level=warning < gitlint.out
