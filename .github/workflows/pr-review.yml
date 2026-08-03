@@ -110,19 +110,22 @@ jobs:
             exit 0
           fi
 
-          # Pull the commit-message convention straight from SCRIPTS_RULES.md so the
-          # comment stays in sync with that doc instead of duplicating it here.
-          RULES=$(awk '/^Commit message rules/{flag=1} /^Local tooling/{flag=0} flag' SCRIPTS_RULES.md)
+          RULES_URL="${{ github.server_url }}/$REPO/blob/${{ github.event.pull_request.base.ref }}/SCRIPTS_RULES.md"
 
           {
             echo "$MARKER"
-            echo "### ⚠️ Commit message format issues"
+            echo "### ⚠️ Commit message needs a small fix"
             echo
             echo '```'
             cat gitlint.out
             echo '```'
             echo
-            echo "$RULES"
+            echo "**Expected format:** \`<component>: <short description>\` (max 72 chars)"
+            echo "Example: \`ci: Fix workflow permissions\`"
+            echo
+            echo "**To fix:** \`git commit --amend\`, then \`git push --force-with-lease\`."
+            echo
+            echo "Full rules: [SCRIPTS_RULES.md]($RULES_URL)"
           } > comment_body.md
 
           if [ -n "$COMMENT_ID" ] && [ "$COMMENT_ID" != "null" ]; then

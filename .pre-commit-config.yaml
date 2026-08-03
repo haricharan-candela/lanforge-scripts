@@ -25,16 +25,16 @@ repos:
     #      - id: markdownlint
     #        args: ['--fix']
 
-# Local commit-msg hook using gitlint
-- repo: local
-  hooks:
-    - id: gitlint-commit-msg
-      name: gitlint commit-msg
-      entry: gitlint --config .gitlint --msg-filename
-      language: system
-      stages: [commit-msg]
-      # This hook relies on gitlint being installed locally:
-      #   pip install gitlint
-      # It will be invoked by pre-commit at commit-msg stage and
-      # pre-commit will pass the temporary commit message filename
-      # as the last argument to this command.
+    # Local commit-msg hook using gitlint
+    - repo: local
+      hooks:
+        - id: gitlint-commit-msg
+          name: gitlint commit-msg
+          entry: gitlint --config .gitlint --msg-filename
+          language: system
+          stages: [commit-msg]
+          # This hook relies on gitlint being installed locally:
+          #   pip install gitlint
+          # It will be invoked by pre-commit at commit-msg stage and
+          # pre-commit will pass the temporary commit message filename
+          # as the last argument to this command.

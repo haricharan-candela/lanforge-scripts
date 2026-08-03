@@ -1,19 +1,21 @@
 [general]
 ignore-merge-commits = True
+# A body is optional per SCRIPTS_RULES.md ("If a body is present, leave a
+# blank line..."); don't flag single-line subject-only commits.
+ignore = body-is-missing
 
-[rule "subject-max-length"]
-id = T001
-level = error
-description = "Subject must be <= 72 chars"
-pattern = ^(?!.{73,}).+
+[title-max-length]
+line-length = 72
 
-[rule "subject-format"]
-id = T002
-level = error
-description = "Subject must be '<component>: <short description>'"
-pattern = ^[A-Za-z0-9_\/\.\-]+: .{1,72}$
+[title-match-regex]
+regex = ^[A-Za-z0-9_\/\.\-]+: .+$
 
 # Notes:
 # - This file defines rules for gitlint to enforce commit message style.
-# - Keep it small and evolve as needed. To test locally: pip install gitlint
+# - Section names must be gitlint's built-in rule names (see
+#   https://jorisroovers.com/gitlint/latest/rules/builtin_rules/).
+#   gitlint has no mechanism for inline custom rules in this file; the
+#   previous [rule "..."] sections here were not valid syntax and made
+#   every run fail with a config error instead of linting the commit.
+# - To test locally: pip install gitlint
 #   and run: gitlint --config .gitlint --commits <base>..HEAD
