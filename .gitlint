@@ -1,0 +1,19 @@
+[general]
+ignore-merge-commits = True
+
+[rule "subject-max-length"]
+id = T001
+level = error
+description = "Subject must be <= 72 chars"
+pattern = ^(?!.{73,}).+
+
+[rule "subject-format"]
+id = T002
+level = error
+description = "Subject must be '<component>: <short description>'"
+pattern = ^[A-Za-z0-9_\/\.\-]+: .{1,72}$
+
+# Notes:
+# - This file defines rules for gitlint to enforce commit message style.
+# - Keep it small and evolve as needed. To test locally: pip install gitlint
+#   and run: gitlint --config .gitlint --commits <base>..HEAD

@@ -74,3 +74,19 @@ jobs:
           # bandit accepts files and directories; run against the changed files
           bandit -r $FILES -f json -o bandit.json || true
           reviewdog -f=bandit -name="bandit" -reporter=github-pr-review -level=warning < bandit.json
+
+      - name: Run gitlint and show results
+        run: |
+          set -e
+          python -m pip install gitlint
+          # Ensure the base ref is fetched so we can compute commit range
+          git fetch origin ${{ github.event.pull_request.base.ref }} --depth=1 || true
+          BASE=${{ github.event.pull_request.base.sha }}
+          echo "Running gitlint on commits: $BASE..HEAD"
+          # Run gitlint and capture output; do not fail the job on parsing issues
+          gitlint --config .gitlint --commits $BASE..HEAD > gitlint.out || true
+          if [ -s gitlint.out ]; then
+            echo "gitlint found issues:"; cat gitlint.out
+          else
+            echo "gitlint: OK"
+          fi
