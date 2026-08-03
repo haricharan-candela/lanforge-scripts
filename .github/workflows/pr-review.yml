@@ -7,6 +7,10 @@ on:
 jobs:
   lint:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      pull-requests: write
+      issues: write
     env:
       REVIEWDOG_GITHUB_API_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
@@ -75,7 +79,7 @@ jobs:
           bandit -r $FILES -f json -o bandit.json || true
           reviewdog -f=bandit -name="bandit" -reporter=github-pr-review -level=warning < bandit.json
 
-      - name: Run gitlint and show results
+      - name: Run gitlint
         run: |
           set -e
           python -m pip install gitlint
@@ -85,8 +89,37 @@ jobs:
           echo "Running gitlint on commits: $BASE..HEAD"
           # Run gitlint and capture output; do not fail the job on parsing issues
           gitlint --config .gitlint --commits $BASE..HEAD > gitlint.out || true
+          cat gitlint.out
+
+      - name: Comment gitlint results on PR
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          MARKER="<!-- gitlint-report -->"
           if [ -s gitlint.out ]; then
-            echo "gitlint found issues:"; cat gitlint.out
+            {
+              echo "$MARKER"
+              echo "### ⚠️ gitlint found commit message issues"
+              echo
+              echo '```'
+              cat gitlint.out
+              echo '```'
+            } > comment_body.md
           else
-            echo "gitlint: OK"
+            {
+              echo "$MARKER"
+              echo "### ✅ gitlint: all commit messages OK"
+            } > comment_body.md
+          fi
+
+          REPO="${{ github.repository }}"
+          PR="${{ github.event.pull_request.number }}"
+          COMMENT_ID=$(gh api "repos/$REPO/issues/$PR/comments" --paginate \
+            --jq "[.[] | select(.body | startswith(\"$MARKER\"))][0].id" || true)
+
+          if [ -n "$COMMENT_ID" ] && [ "$COMMENT_ID" != "null" ]; then
+            gh api -X PATCH "repos/$REPO/issues/comments/$COMMENT_ID" -f body=@comment_body.md
+          else
+            gh api "repos/$REPO/issues/$PR/comments" -f body=@comment_body.md
           fi
